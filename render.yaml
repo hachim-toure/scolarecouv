@@ -13,13 +13,4 @@ services:
       - key: NODE_VERSION
         value: 22.16.0
       - key: DATABASE_URL
-        fromDatabase:
-          name: scolarecouv-db
-          property: connectionString
-databases:
-  - name: scolarecouv-db
-    plan: free
-    region: frankfurt
-    databaseName: scolarecouv
-    user: scolarecouv
-    ipAllowList: []
+        sync: false
