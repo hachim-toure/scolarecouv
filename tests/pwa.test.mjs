@@ -1,0 +1,5 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {runInNewContext} from 'node:vm';
+import {serviceWorkerSource} from '../scripts/build-pwa.mjs';
+test('Phone shell cache never intercepts financial data, sessions or payment POSTs',async()=>{const handlers={},hit={shell:true};let network=0;const self={location:{origin:'https://school.test'},addEventListener:(name,fn)=>handlers[name]=fn};runInNewContext(serviceWorkerSource('<script src="/assets/test.js"></script>'),{self,URL,caches:{open:async()=>({match:async()=>hit})},fetch:async()=>{network++;return {};}});for(const [path,method]of [['/api/school','GET'],['/api/auth/me','GET'],['/health','GET'],['/api/school','POST']]){let intercepted=false;handlers.fetch({request:{url:'https://school.test'+path,method,mode:'cors'},respondWith:()=>intercepted=true});assert.equal(intercepted,false,path);}let result;handlers.fetch({request:{url:'https://school.test/',method:'GET',mode:'navigate'},respondWith:p=>result=p});assert.equal(await result,hit);assert.equal(network,0);});
