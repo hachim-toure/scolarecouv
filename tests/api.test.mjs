@@ -23,6 +23,11 @@ assert.equal((await call('/api/school',null,other.cookie)).body.students.length,
 assert.equal((await call('/api/school',{...payment,id:'foreign'},other.cookie)).status,400);
 assert.equal((await call('/api/school',{action:'cancel',id:'payment-1',reason:'Erreur de caisse'},cookie)).status,200);
 assert.equal((await call('/api/school',{...payment,id:'payment-2',amount:90000},cookie)).status,200);
+const simple={action:'student',name:'Simple Élève',class_name:'CP2',parent:'',phone:'',year:'2026–2027',fee:80000,schedule:[{date:'2027-06-30',amount:80000}]};
+assert.equal((await call('/api/school',simple,cookie)).status,200);
+const simpleStudent=(await call('/api/school',null,cookie)).body.students.find(s=>s.name==='Simple Élève');assert.equal(simpleStudent.phone,'');assert.equal(simpleStudent.parent,'');
+assert.equal((await call('/api/school',{...payment,id:'simple-payment',student_id:simpleStudent.id,amount:10000},cookie)).status,200);
+assert.equal((await call('/api/school',{...simple,name:'Invalid Phone',phone:'abc'},cookie)).status,400);
 assert.equal((await call('/api/auth/logout',{},cookie)).status,200);
 assert.equal((await call('/api/school',null,cookie)).status,401);
 }finally{await new Promise(resolve=>server.close(resolve));await pool.end();}});
