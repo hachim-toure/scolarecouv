@@ -1,0 +1,28 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {newDb} from 'pg-mem';
+import pg from 'pg';
+const db=newDb();pg.Pool=db.adapters.createPg().Pool;
+process.env.DATABASE_URL='postgresql://test';process.env.PORT='3097';process.env.NODE_ENV='development';
+const {server,pool}=await import('../server.mjs');
+async function call(path,body,cookie){const r=await fetch('http://127.0.0.1:3097'+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,body:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
+test('Independent account, tuition payments, receipt data, cancellation and school isolation',async()=>{try{
+assert.equal((await call('/api/school')).status,401);
+const account=await call('/api/auth/register',{login:'test-school',password:'SchoolPass123!',school:'École Test'});assert.equal(account.status,200,JSON.stringify(account.body));assert.ok(account.cookie);const cookie=account.cookie;
+assert.equal((await call('/api/auth/login',{login:'test-school',password:'bad'})).status,401);
+assert.equal((await call('/api/auth/login',{login:'test-school',password:'SchoolPass123!'})).status,200);
+assert.equal((await call('/api/school',{action:'student',name:'Test Élève',class_name:'CP1',parent:'Test Parent',phone:'70123456',year:'2026–2027',fee:90000,schedule:[{date:'2026-10-05',amount:30000},{date:'2027-01-05',amount:60000}]},cookie)).status,200);
+let d=(await call('/api/school',null,cookie)).body;const sid=d.students[0].id;assert.equal(d.settings.name,'École Test');
+const payment={action:'payment',id:'payment-1',student_id:sid,amount:30000,method:'Espèces',reference:'',date:'2026-10-05'};
+assert.equal((await call('/api/school',payment,cookie)).status,200);
+assert.equal((await call('/api/school',payment,cookie)).status,200);
+assert.equal((await call('/api/school',{...payment,id:'overpayment',amount:70000},cookie)).status,400);
+d=(await call('/api/school',null,cookie)).body;assert.equal(d.payments.length,1);assert.equal(d.payments[0].amount,30000);
+const other=await call('/api/auth/register',{login:'other-school',password:'SchoolPass123!',school:'Autre école'});assert.equal(other.status,200);
+assert.equal((await call('/api/school',null,other.cookie)).body.students.length,0);
+assert.equal((await call('/api/school',{...payment,id:'foreign'},other.cookie)).status,400);
+assert.equal((await call('/api/school',{action:'cancel',id:'payment-1',reason:'Erreur de caisse'},cookie)).status,200);
+assert.equal((await call('/api/school',{...payment,id:'payment-2',amount:90000},cookie)).status,200);
+assert.equal((await call('/api/auth/logout',{},cookie)).status,200);
+assert.equal((await call('/api/school',null,cookie)).status,401);
+}finally{await new Promise(resolve=>server.close(resolve));await pool.end();}});

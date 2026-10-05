@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {hashPassword,checkPassword,hashToken,validDate,validSchedule} from '../security.mjs';
+test('Password storage uses salted hashes and rejects wrong passwords',async()=>{const p='ecoleHorizon-2026';const a=await hashPassword(p),b=await hashPassword(p);assert.notEqual(a,b);assert.equal(await checkPassword(p,a),true);assert.equal(await checkPassword('wrong',a),false);assert.equal(await checkPassword(p,'invalid'),false);assert.equal(a.includes(p),false);});
+test('Session tokens are stored as hashes',()=>{assert.equal(hashToken('token').length,64);assert.notEqual(hashToken('token'),hashToken('other'));});
+test('Invalid dates and incomplete fee schedules are rejected',()=>{assert.equal(validDate('2026-02-30'),false);assert.equal(validDate('2026-13-01'),false);assert.equal(validDate('2026-10-05'),true);assert.equal(validSchedule([{date:'2026-10-05',amount:30000},{date:'2027-01-15',amount:60000}],90000),true);assert.equal(validSchedule([{date:'2026-10-05',amount:30000}],90000),false);assert.equal(validSchedule([{date:'2026-10-05',amount:-100}],-100),false);});

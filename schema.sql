@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS scola_accounts(id text PRIMARY KEY, login text UNIQUE NOT NULL, password text NOT NULL, created timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS scola_sessions(token text PRIMARY KEY, owner text NOT NULL REFERENCES scola_accounts(id), expires timestamptz NOT NULL);
+CREATE INDEX IF NOT EXISTS scola_sessions_owner ON scola_sessions(owner);
+CREATE TABLE IF NOT EXISTS scola_settings(owner text PRIMARY KEY REFERENCES scola_accounts(id),name text NOT NULL,phone text NOT NULL DEFAULT '',address text NOT NULL DEFAULT '',year text NOT NULL);
+CREATE TABLE IF NOT EXISTS scola_students(id text PRIMARY KEY,owner text NOT NULL REFERENCES scola_accounts(id),name text NOT NULL,class_name text NOT NULL,parent text NOT NULL,phone text NOT NULL,year text NOT NULL,fee integer NOT NULL CHECK(fee>0),schedule text NOT NULL,created text NOT NULL);
+CREATE INDEX IF NOT EXISTS scola_students_owner ON scola_students(owner);
+CREATE TABLE IF NOT EXISTS scola_payments(id text PRIMARY KEY,owner text NOT NULL REFERENCES scola_accounts(id),student_id text NOT NULL REFERENCES scola_students(id),amount integer NOT NULL CHECK(amount>0),method text NOT NULL,reference text NOT NULL,date text NOT NULL,created text NOT NULL,cancel_reason text);
+CREATE INDEX IF NOT EXISTS scola_payments_owner_student ON scola_payments(owner,student_id);
+CREATE TABLE IF NOT EXISTS scola_reminders(id text PRIMARY KEY,owner text NOT NULL REFERENCES scola_accounts(id),student_id text NOT NULL REFERENCES scola_students(id),created text NOT NULL);
+CREATE INDEX IF NOT EXISTS scola_reminders_owner ON scola_reminders(owner);
